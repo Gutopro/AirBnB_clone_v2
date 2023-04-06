@@ -1,15 +1,70 @@
-#sets up your web servers for the deployment
-exec { '/usr/bin/env apt-get -y update' : }
--> exec { '/usr/bin/env apt-get -y install nginx' : }
--> exec { '/usr/bin/env sed -i "/listen \[::\]:80 default_server/ a\\\trewrite ^/redirect_me http://www.holbertonschool.com permanent;" /etc/nginx/sites-available/default' : }
--> exec { '/usr/bin/env sed -i "/listen \[::\]:80 default_server/ a\\\tadd_header X-Served-By \"\$HOSTNAME\";" /etc/nginx/sites-available/default' : }
--> exec { '/usr/bin/env sed -i "/redirect_me/ a\\\terror_page 404 /custom_404.html;" /etc/nginx/sites-available/default' : }
--> exec { '/usr/bin/env # echo "Ceci n\'est pas une page" > /var/www/html/custom_404.html' : }
--> exec { '/usr/bin/env service nginx start' : }
--> exec { '/usr/bin/env mkdir -p /data/web_static/releases/test/' : }
--> exec { '/usr/bin/env mkdir -p /data/web_static/shared/' : }
--> exec { '/usr/bin/env echo "Hello Holberton School!" > /data/web_static/releases/test/index.html' : }
--> exec { '/usr/bin/env ln -sf /data/web_static/releases/test/ /data/web_static/current' : }
--> exec { '/usr/bin/env sed -i "/^\tlocation \/ {$/ i\\\tlocation /hbnb_static {\n\t\talias /data/web_static/current/;\n\t\tautoindex off;\n}" /etc/nginx/sites-available/default' : }
--> exec { '/usr/bin/env service nginx restart' : }
--> exec { '/usr/bin/env chown -R ubuntu:ubuntu /data/' : }
+# setting up the web servers for the deployment of web_static
+class web_static {
+  package { 'nginx':
+    ensure => installed,
+  }
+
+  file { '/data/web_static/shared':
+    ensure => directory,
+    owner  => 'ubuntu',
+    group  => 'ubuntu',
+    mode   => '0775',
+  }
+
+  file { '/data/web_static/releases/test/':
+    ensure => directory,
+    owner  => 'ubuntu',
+    group  => 'ubuntu',
+    mode   => '0775',
+  }
+
+  file { '/data/web_static/releases/test/index.html':
+    ensure => file,
+    owner  => 'ubuntu',
+    group  => 'ubuntu',
+    mode   => '0644',
+    content => '
+      <html>
+        <head>
+        </head>
+        <body>
+          Holberton School
+        </body>
+      </html>
+    ',
+  }
+
+  file { '/data/web_static/current':
+    ensure => 'link',
+    target => '/data/web_static/releases/test/',
+  }
+
+  service { 'nginx':
+    ensure  => running,
+    enable  => true,
+    require => Package['nginx'],
+  }
+
+  file_line { 'add_hbnb_static_location':
+    path => '/etc/nginx/sites-available/default',
+    line => 'location /hbnb_static {',
+    after => 'server {',
+  }
+
+  file_line { 'add_alias_to_hbnb_static_location':
+    path => '/etc/nginx/sites-available/default',
+    line => 'alias /data/web_static/current;',
+    after => 'location /hbnb_static {',
+  }
+
+  exec { 'restart_nginx':
+    command     => '/etc/init.d/nginx restart',
+    refreshonly => true,
+    subscribe   => [
+      File_line['add_hbnb_static_location'],
+      File_line['add_alias_to_hbnb_static_location'],
+    ],
+  }
+}
+
+include web_static
