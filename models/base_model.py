@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-Contains class BaseModel
+Contain class BaseModel
 """
 
 from datetime import datetime
