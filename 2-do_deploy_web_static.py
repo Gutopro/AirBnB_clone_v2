@@ -35,7 +35,7 @@ def do_deploy(archive_path):
         archived_file = archive_path[9:]
         newest_version = "/data/web_static/releases/" + archived_file[:-4]
         archived_file = "/tmp/" + archived_file
-        put(archive_path, "/tmp/")
+        put(archive_path, "/tmp/", key_filename='~/.ssh/school')
         run("sudo mkdir -p {}".format(newest_version))
         run("sudo tar -xzf {} -C {}/".format(archived_file,
                                              newest_version))
