@@ -1,30 +1,47 @@
+
 #!/usr/bin/python3
 """
-Fabric script based on the file 1-pack_web_static.py that distributes an
-archive to the web servers
+Fabric script to deploy tgz archive
+fab -f 2-do_deploy_web_static.py do_deploy:archive_path=filepath
+    -i private-key -u user
 """
 
-from fabric.api import put, run, env
 from os.path import exists
-env.hosts = ['142.44.167.228', '144.217.246.195']
+from fabric.api import put, run, env
+
+env.hosts = ['54.160.112.198', '52.91.160.121']
 
 
 def do_deploy(archive_path):
-    """distributes an archive to the web servers"""
-    if exists(archive_path) is False:
+    """
+    copies archive file from local to my webservers
+    """
+
+    if not exists(archive_path):
         return False
     try:
-        file_n = archive_path.split("/")[-1]
-        no_ext = file_n.split(".")[0]
-        path = "/data/web_static/releases/"
-        put(archive_path, '/tmp/')
-        run('mkdir -p {}{}/'.format(path, no_ext))
-        run('tar -xzf /tmp/{} -C {}{}/'.format(file_n, path, no_ext))
-        run('rm /tmp/{}'.format(file_n))
-        run('mv {0}{1}/web_static/* {0}{1}/'.format(path, no_ext))
-        run('rm -rf {}{}/web_static'.format(path, no_ext))
-        run('rm -rf /data/web_static/current')
-        run('ln -s {}{}/ /data/web_static/current'.format(path, no_ext))
+        file_name = archive_path.split("/")[-1].split(".")[0]
+        put(archive_path, "/tmp/")
+
+        run("sudo mkdir -p /data/web_static/releases/{}".format(file_name))
+
+        run("sudo tar -xzf /tmp/{}.tgz -C /data/web_static/releases/{}/"
+            .format(file_name, file_name))
+
+        run('sudo rm -rf /tmp/{}.tgz'.format(file_name))
+
+        run(('sudo mv /data/web_static/releases/{}/web_static/* ' +
+            '/data/web_static/releases/{}/')
+            .format(file_name, file_name))
+
+        run('sudo rm -rf /data/web_static/releases/{}/web_static'
+            .format(file_name))
+
+        run('sudo rm -rf /data/web_static/current')
+
+        run(('sudo ln -s /data/web_static/releases/{}/' +
+            ' /data/web_static/current')
+            .format(file_name))
         return True
-    except:
+    except Exception:
         return False
